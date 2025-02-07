@@ -66,9 +66,66 @@ class StockDataCollector:
             print(f"获取股票列表时发生错误：{str(e)}")
             return pd.DataFrame()
     
-    def fetch_financial_data(self, stock_code):
-        """获取单个股票的财务数据"""
-        pass
+    def fetch_financial_data(self, stock_code, year=None, quarter=None):
+        """获取单个股票的财务数据
+        
+        Args:
+            stock_code: str, 股票代码（如：sh.600000）
+            year: int, 年份（如：2023），默认为最新年份
+            quarter: int, 季度（1-4），默认为最新季度
+            
+        Returns:
+            dict: 包含以下DataFrame：
+            - profit: 利润表
+            - balance: 资产负债表
+            - cash_flow: 现金流量表
+            - indicators: 财务指标
+        """
+        try:
+            if year is None:
+                year = datetime.now().year
+            if quarter is None:
+                quarter = (datetime.now().month - 1) // 3 + 1
+                
+            result = {}
+            
+            # 1. 获取利润表
+            profit_rs = self.bs.query_profit_data(code=stock_code, year=year, quarter=quarter)
+            if profit_rs.error_code == '0':
+                profit_list = []
+                while (profit_rs.error_code == '0') & profit_rs.next():
+                    profit_list.append(profit_rs.get_row_data())
+                result['profit'] = pd.DataFrame(profit_list, columns=profit_rs.fields)
+            
+            # 2. 获取资产负债表
+            balance_rs = self.bs.query_balance_data(code=stock_code, year=year, quarter=quarter)
+            if balance_rs.error_code == '0':
+                balance_list = []
+                while (balance_rs.error_code == '0') & balance_rs.next():
+                    balance_list.append(balance_rs.get_row_data())
+                result['balance'] = pd.DataFrame(balance_list, columns=balance_rs.fields)
+            
+            # 3. 获取现金流量表
+            cash_flow_rs = self.bs.query_cash_flow_data(code=stock_code, year=year, quarter=quarter)
+            if cash_flow_rs.error_code == '0':
+                cash_flow_list = []
+                while (cash_flow_rs.error_code == '0') & cash_flow_rs.next():
+                    cash_flow_list.append(cash_flow_rs.get_row_data())
+                result['cash_flow'] = pd.DataFrame(cash_flow_list, columns=cash_flow_rs.fields)
+            
+            # 4. 获取主要财务指标
+            indicators_rs = self.bs.query_dupont_data(code=stock_code, year=year, quarter=quarter)
+            if indicators_rs.error_code == '0':
+                indicators_list = []
+                while (indicators_rs.error_code == '0') & indicators_rs.next():
+                    indicators_list.append(indicators_rs.get_row_data())
+                result['indicators'] = pd.DataFrame(indicators_list, columns=indicators_rs.fields)
+            
+            return result
+            
+        except Exception as e:
+            print(f"获取财务数据时发生错误：{str(e)}")
+            return {}
     
     def fetch_daily_price(self, stock_code):
         """获取股票的日线数据"""
