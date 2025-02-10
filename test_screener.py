@@ -14,7 +14,7 @@ def main():
     # 创建股票筛选器
     screener = StockScreener()
     
-    # 添加筛选条件
+    # 添加资产负债筛选条件
     screener.add_filter('balance', 'liabilityToAsset(资产负债率)', max_value=0.008)
     screener.add_filter('balance', 'quickRatio(速动比率)', min_value=1.0, allow_null=True)  # 速动比率大于1.0
     screener.add_filter('balance', 'YOYLiability(负债同比增长率)', min_value=0, allow_null=True)  # 负债同比增长率大于0，表示负债在增长，需要注意资产规模是否同步增长
