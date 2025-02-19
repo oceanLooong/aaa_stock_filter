@@ -5,7 +5,7 @@
 
 import pandas as pd
 import baostock as bs
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class StockDataCollector:
@@ -126,6 +126,65 @@ class StockDataCollector:
         except Exception as e:
             print(f"获取财务数据时发生错误：{str(e)}")
             return {}
+    
+    def fetch_valuation_data(self, stock_code):
+        """获取单个股票的估值数据
+        
+        Args:
+            stock_code: str, 股票代码 (如："sh.600000")
+            
+        Returns:
+            dict: 包含以下字段：
+            - pe_ttm: float, 市盈率TTM
+            - pb: float, 市净率
+            - ps: float, 市销率
+            - price: float, 当前价格
+            - volume: float, 成交量
+            - amount: float, 成交额
+            - turnover: float, 换手率
+        """
+        try:
+            # 获取当前日期
+            today = datetime.now().strftime("%Y-%m-%d")
+            
+            # 获取基本面数据
+            rs = self.bs.query_stock_basic(code=stock_code)
+            if rs.error_code != '0':
+                print(f'获取{stock_code}基本信息失败: {rs.error_msg}')
+                return None
+            
+            # 获取当日行情数据    
+            rs_k = self.bs.query_history_k_data_plus(
+                code=stock_code,
+                fields="date,code,close,volume,amount,turn",
+                start_date=today,
+                end_date=today,
+                frequency="d",
+                adjustflag="3"
+            )
+            
+            result = {}
+            
+            # 解析基本面数据
+            if rs.error_code == '0' and rs.next():
+                basic_info = rs.get_row_data()
+                # 注意：字段索引可能需要根据实际API返回调整
+                result['pe_ttm'] = float(basic_info[15]) if len(basic_info) > 15 and basic_info[15] != '' else None
+                result['pb'] = float(basic_info[16]) if len(basic_info) > 16 and basic_info[16] != '' else None
+            
+            # 解析行情数据
+            if rs_k.error_code == '0' and rs_k.next():
+                k_data = rs_k.get_row_data()
+                result['price'] = float(k_data[2]) if k_data[2] != '' else None
+                result['volume'] = float(k_data[3]) if k_data[3] != '' else None
+                result['amount'] = float(k_data[4]) if k_data[4] != '' else None
+                result['turnover'] = float(k_data[5]) if k_data[5] != '' else None
+            
+            return result
+            
+        except Exception as e:
+            print(f"获取{stock_code}估值数据时发生错误：{str(e)}")
+            return None
     
     def fetch_daily_price(self, stock_code):
         """获取股票的日线数据"""
